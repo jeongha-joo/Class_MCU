@@ -1,50 +1,104 @@
 /*
- * ExInterrupt3.c
+ * Mycar.c
  *
- * Created: 2020-09-22 오후 2:46:28
+ * Created: 2020-09-22 오후 4:47:10
  * Author : IT학교
+	atmega 2560
+	motor 동작
+	A : DIR-PG5 : output
+	: 전력공급-pe3:
  */ 
-
 #include <avr/io.h>
-#include <avr/interrupt.h>
 #include <util/delay.h>
 
-//unsigned int sw_flag = 0;
-unsigned char ledData = 1;
+#define MTR_A_DIR_DDR	DDRG
+#define MTR_A_SPEED_DDR DDRE
+#define MTR_B_DIR_DDR	DDRH
+#define MTR_B_SPEED_DDR DDRH
 
-ISR(INT5_vect){
-	//sw_flag = !sw_flag;
-	ledData = ledData << 1;
-	PORTC = ~ledData;
-	if(0x80 == ledData)
-		ledData = 0x01;
-		_delay_ms(100);
+#define MTR_A_DIR_PORT	 PORTG
+#define MTR_A_SPEED_PORT PORTE
+#define MTR_B_DIR_PORT	 PORTH
+#define MTR_B_SPEED_PORT PORTH
+
+#define MTR_A_DIR_PIN	PG5
+#define MTR_A_SPEED_PIN PE3
+#define MTR_B_DIR_PIN	PH4
+#define MTR_B_SPEED_PIN PH3
+
+void motor_init(void){
+	MTR_A_DIR_DDR |= (1<<MTR_A_DIR_PIN);
+	MTR_A_SPEED_DDR |= (1<<MTR_A_SPEED_PIN);
+	MTR_B_DIR_DDR |= (1<<MTR_B_DIR_PIN);
+	MTR_B_SPEED_DDR |= (1<<MTR_B_SPEED_PIN);
+	
+	MTR_A_SPEED_PORT |= (0<<MTR_A_SPEED_PIN);
+	MTR_B_SPEED_PORT |= (0<<MTR_B_SPEED_PIN);
+}
+// 오른쪽 바퀴
+void motor_a_forward(){
+	MTR_A_DIR_PORT	|= (1<<MTR_A_DIR_PIN);
+	MTR_A_SPEED_PORT |= (1<<MTR_A_SPEED_PIN);
 }
 
-void led_init(){
-	DDRC = 0xff;
-	PORTC = 0xff;
+
+void motor_a_backward(){
+	MTR_A_DIR_PORT &= ~(1<<MTR_A_DIR_PIN);
+	MTR_A_SPEED_PORT |= (1<<MTR_A_SPEED_PIN);
 }
 
-void swInterrupt_init(){
-	//DDRE(pe5-int5) 입력용 설정
-	DDRE = (0<<PE5);
-	// 외부인터럽트 int5 설정
-	EIMSK = (1 << INT5);
-	// 검출한 신호 설정 (low level)
-	EICRB = (0 << ISC51) | (0 << ISC50);
-	// 모든 외부인터럽트 발생을 초기화
-	EIFR = 0x00; //0 << INTF5;
+//왼쪽 바퀴
+void motor_b_forward(){
+	MTR_B_DIR_PORT &= ~(1<<MTR_B_DIR_PIN);
+	MTR_B_SPEED_PORT |= (1<<MTR_B_SPEED_PIN);
 }
+
+void motor_b_backward(){
+	MTR_B_DIR_PORT |= (1<<MTR_B_DIR_PIN);
+	MTR_B_SPEED_PORT |= (1<<MTR_B_SPEED_PIN);
+}
+
+void motor_go(){
+	motor_b_forward();
+	motor_a_forward();
+}
+
+void motor_right(){
+	motor_a_forward();
+	motor_b_backward();
+}
+
+void motor_left(){
+	motor_b_forward();
+	motor_a_backward();
+}
+
+void motor_stop(){
+	MTR_A_SPEED_PORT &= (0<< MTR_A_SPEED_PIN);
+	MTR_B_SPEED_PORT &= (0<< MTR_B_SPEED_PIN);
+}
+
 
 int main(void)
 {
-    led_init();
-	swInterrupt_init();
-	sei();		//전역 인터럽트 set
+    motor_init();
+	
+	DDRK = 0xFF;
+	PORTK = 0xFF;
+		
 	while (1) 
     {
-		;
-	}
+		motor_right();
+		_delay_ms(500);
+		
+		motor_stop();
+		_delay_ms(2000);
+		
+		motor_left();
+		_delay_ms(500);
+		
+		motor_stop();
+		_delay_ms(2000);
+    }
 }
 
